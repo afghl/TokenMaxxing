@@ -2,7 +2,6 @@
 //  ContentView.swift
 //  TokenMaxing
 //
-//  Created by zp on 2026/6/4.
 //
 
 import SwiftUI
