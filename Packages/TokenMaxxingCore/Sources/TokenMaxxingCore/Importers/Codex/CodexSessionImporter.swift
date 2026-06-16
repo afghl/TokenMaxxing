@@ -146,12 +146,11 @@ private extension CodexSessionImporter {
     }
 
     func buildTurns(from events: [NumberedCodexEvent], sessionID: String) -> [Turn] {
-        let userEventIndices = events.indices.filter { events[$0].isEventMessage("user_message") }
+        let turnWindows = turnWindows(from: events)
 
-        return userEventIndices.enumerated().map { offset, startIndex in
-            let nextStartIndex = userEventIndices.dropFirst(offset + 1).first ?? events.endIndex
-            let window = Array(events[startIndex..<nextStartIndex])
-            let beforeUsage = Array(events[..<startIndex]).lastUsageSnapshot
+        return turnWindows.enumerated().map { offset, turnWindow in
+            let window = Array(events[turnWindow.startIndex..<turnWindow.endIndex])
+            let beforeUsage = Array(events[..<turnWindow.startIndex]).lastUsageSnapshot
             let latestUsage = window.lastUsageSnapshot
             let usage = latestUsage?.subtracting(beforeUsage)
             let completedAt = window.first { $0.isEventMessage("task_complete") }?.event.timestamp
@@ -159,11 +158,43 @@ private extension CodexSessionImporter {
 
             return Turn(
                 id: "\(sessionID)-turn-\(offset + 1)",
-                startedAt: events[startIndex].event.timestamp,
+                startedAt: events[turnWindow.startIndex].event.timestamp,
                 completedAt: completedAt,
                 messages: messages,
                 usage: usage
             )
+        }
+    }
+
+    func turnWindows(from events: [NumberedCodexEvent]) -> [TurnWindow] {
+        let taskStartIndices = events.indices.filter { events[$0].isEventMessage("task_started") }
+        guard !taskStartIndices.isEmpty else {
+            return userMessageWindows(from: events)
+        }
+
+        return taskStartIndices.enumerated().compactMap { offset, taskStartIndex in
+            let nextTaskStartIndex = taskStartIndices.dropFirst(offset + 1).first ?? events.endIndex
+            let taskCompleteEndIndex = events[taskStartIndex..<nextTaskStartIndex]
+                .firstIndex(where: { $0.isEventMessage("task_complete") })
+                .map { events.index(after: $0) }
+            let taskEndIndex = taskCompleteEndIndex ?? nextTaskStartIndex
+
+            guard let firstUserMessageIndex = events[taskStartIndex..<taskEndIndex]
+                .firstIndex(where: { $0.isEventMessage("user_message") })
+            else {
+                return nil
+            }
+
+            return TurnWindow(startIndex: firstUserMessageIndex, endIndex: taskEndIndex)
+        }
+    }
+
+    func userMessageWindows(from events: [NumberedCodexEvent]) -> [TurnWindow] {
+        let userEventIndices = events.indices.filter { events[$0].isEventMessage("user_message") }
+
+        return userEventIndices.enumerated().map { offset, startIndex in
+            let endIndex = userEventIndices.dropFirst(offset + 1).first ?? events.endIndex
+            return TurnWindow(startIndex: startIndex, endIndex: endIndex)
         }
     }
 
@@ -263,6 +294,11 @@ private extension CodexSessionImporter {
 
         return String(fileName[range])
     }
+}
+
+private struct TurnWindow {
+    let startIndex: Array<NumberedCodexEvent>.Index
+    let endIndex: Array<NumberedCodexEvent>.Index
 }
 
 private struct NumberedCodexEvent {
