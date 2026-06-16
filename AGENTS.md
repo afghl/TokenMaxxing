@@ -81,8 +81,13 @@ xcodebuild -project TokenMaxxing.xcodeproj -scheme 'TokenMaxxing iOS' -destinati
   snapshots and derive deltas by subtraction.
 - Do not double-count `reasoningOutputTokens`; it is a breakdown of output
   tokens, not an additional total.
-- A Codex turn starts at `event_msg.user_message` and ends at the first
-  `event_msg.task_complete` before the next user message, if present.
+- A Codex turn normally starts at the first `event_msg.user_message` inside an
+  `event_msg.task_started` window and ends at that window's
+  `event_msg.task_complete`, if present.
+- Codex Desktop Steer/interruption input may add another
+  `event_msg.user_message` before the current `task_complete` without a new
+  `task_started`; treat that as a message inside the current turn, not as a new
+  turn boundary.
 
 ## Testing
 
