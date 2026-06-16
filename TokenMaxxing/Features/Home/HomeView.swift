@@ -27,7 +27,7 @@ struct HomeView: View {
             .navigationTitle("TokenMaxxing")
         }
         #if os(macOS)
-        .frame(minWidth: 760, minHeight: 720)
+            .frame(minWidth: 760, minHeight: 720)
         #endif
     }
 
@@ -123,7 +123,8 @@ struct HomeView: View {
             SummaryTile(
                 title: dashboard.selectedRange.peakLabel,
                 value: dashboard.peakUsage.map { dashboard.formatPeakLabel($0) } ?? "-",
-                subtitle: dashboard.peakUsage.map { "\($0.tokens.formatted()) tokens" } ?? "No data",
+                subtitle: dashboard.peakUsage.map { "\($0.tokens.formatted()) tokens" }
+                    ?? "No data",
                 systemImage: "flame.fill",
                 tint: .summaryRed
             )
@@ -208,8 +209,8 @@ private struct TokenUsageChart: View {
                 x: .value("Time", item.date),
                 y: .value("Tokens", item.tokens)
             )
-            .interpolationMethod(.catmullRom)
-            .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .interpolationMethod(.linear)
+            .lineStyle(.init(lineWidth: 3, lineCap: .butt, lineJoin: .miter))
             .foregroundStyle(Color.tokenAccent)
         }
     }
@@ -227,32 +228,32 @@ private struct TokenUsageChart: View {
 
     private func styledChart(_ chart: some View) -> some View {
         chart
-        .chartYScale(domain: 0...(Double(maxTokens) * 1.18))
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: range == .day ? 6 : 5)) { value in
-                AxisGridLine()
-                    .foregroundStyle(.secondary.opacity(0.22))
-                AxisTick()
-                    .foregroundStyle(.secondary.opacity(0.35))
+            .chartYScale(domain: 0...(Double(maxTokens) * 1.18))
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: range == .day ? 6 : 5)) { value in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(0.22))
+                    AxisTick()
+                        .foregroundStyle(.secondary.opacity(0.35))
 
-                if let date = value.as(Date.self) {
-                    AxisValueLabel {
-                        Text(axisLabel(for: date))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                    if let date = value.as(Date.self) {
+                        AxisValueLabel {
+                            Text(axisLabel(for: date))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
-                AxisGridLine()
-                    .foregroundStyle(.secondary.opacity(0.18))
-                AxisValueLabel()
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            .chartYAxis {
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(0.18))
+                    AxisValueLabel()
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-        }
     }
 
     private func axisLabel(for date: Date) -> String {
@@ -337,11 +338,11 @@ private struct UsageRow: View {
     }
 }
 
-private extension Color {
-    static let appBackground = Color(red: 0.95, green: 0.95, blue: 0.97)
-    static let tokenAccent = Color(red: 0.98, green: 0.38, blue: 0.13)
-    static let summaryBlue = Color(red: 0.12, green: 0.43, blue: 0.92)
-    static let summaryGreen = Color(red: 0.06, green: 0.55, blue: 0.32)
-    static let summaryPurple = Color(red: 0.48, green: 0.28, blue: 0.88)
-    static let summaryRed = Color(red: 0.88, green: 0.14, blue: 0.21)
+extension Color {
+    fileprivate static let appBackground = Color(red: 0.95, green: 0.95, blue: 0.97)
+    fileprivate static let tokenAccent = Color(red: 0.98, green: 0.38, blue: 0.13)
+    fileprivate static let summaryBlue = Color(red: 0.12, green: 0.43, blue: 0.92)
+    fileprivate static let summaryGreen = Color(red: 0.06, green: 0.55, blue: 0.32)
+    fileprivate static let summaryPurple = Color(red: 0.48, green: 0.28, blue: 0.88)
+    fileprivate static let summaryRed = Color(red: 0.88, green: 0.14, blue: 0.21)
 }
