@@ -30,7 +30,8 @@ final class CodexSessionImporterTests: XCTestCase {
         XCTAssertEqual(secondTurn.status, .inProgress)
         XCTAssertNil(secondTurn.workedDuration)
         XCTAssertEqual(secondTurn.usage?.totalTokens, 150)
-        XCTAssertEqual(secondTurn.userMessage?.text, "second turn\n")
+        XCTAssertEqual(secondTurn.userMessage?.preview, "second turn")
+        XCTAssertEqual(secondTurn.messages.filter { $0.role == .tool }.count, 3)
     }
 
     func testImporterCanLoadSingleSessionByID() throws {
@@ -71,6 +72,7 @@ final class CodexSessionImporterTests: XCTestCase {
         {"timestamp":"2026-06-16T09:29:01.000Z","type":"event_msg","payload":{"type":"user_message","message":"second turn\\n"}}
         {"timestamp":"2026-06-16T09:29:03.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command"}}
         {"timestamp":"2026-06-16T09:29:04.000Z","type":"response_item","payload":{"type":"function_call_output","output":"ok"}}
+        {"timestamp":"2026-06-16T09:29:04.500Z","type":"response_item","payload":{"type":"function_call_output","output":[{"type":"input_image","image_url":"data:image/jpeg;base64,abc","detail":"original"}]}}
         {"timestamp":"2026-06-16T09:29:05.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":230,"cached_input_tokens":100,"output_tokens":20,"reasoning_output_tokens":8,"total_tokens":250}}}}
         """
     }

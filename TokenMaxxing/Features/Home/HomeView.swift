@@ -74,7 +74,9 @@ struct HomeView: View {
                 Spacer(minLength: 10)
 
                 Button {
-                    dashboard.triggerScan()
+                    Task {
+                        await dashboard.refreshFromCodexLogs()
+                    }
                 } label: {
                     Label("Scan", systemImage: "arrow.clockwise")
                         .labelStyle(.titleAndIcon)
@@ -102,6 +104,9 @@ struct HomeView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(.white.opacity(0.28), lineWidth: 1)
+        }
+        .task {
+            await dashboard.refreshFromCodexLogs()
         }
     }
 
@@ -132,9 +137,9 @@ struct HomeView: View {
             )
 
             SummaryTile(
-                title: "Month Projection",
-                value: dashboard.projectedMonthTokens.formatted(),
-                subtitle: "tokens",
+                title: "Active Days",
+                value: dashboard.activeDays.formatted(),
+                subtitle: "last 30 days",
                 systemImage: "arrow.up.right",
                 tint: .summaryPurple
             )

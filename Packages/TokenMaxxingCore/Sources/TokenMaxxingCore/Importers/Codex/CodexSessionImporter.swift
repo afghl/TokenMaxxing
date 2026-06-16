@@ -51,7 +51,7 @@ public final class CodexSessionImporter: SessionImporter {
 
 public enum CodexSessionImportError: Error, Equatable {
     case emptySession(URL)
-    case invalidJSON(URL, line: Int)
+    case decodingFailed(URL, line: Int)
 }
 
 private extension CodexSessionImporter {
@@ -108,7 +108,7 @@ private extension CodexSessionImporter {
                     let event = try decoder.decode(CodexLogEntry.self, from: Data(trimmed.utf8))
                     return NumberedCodexEvent(event: event, line: offset + 1)
                 } catch {
-                    throw CodexSessionImportError.invalidJSON(url, line: offset + 1)
+                    throw CodexSessionImportError.decodingFailed(url, line: offset + 1)
                 }
             }
     }
@@ -146,7 +146,7 @@ private extension CodexSessionImporter {
                     id: messageID,
                     role: .user,
                     timestamp: event.event.timestamp,
-                    text: event.event.payload?.message,
+                    preview: event.event.payload?.message?.trimmedPreview(),
                     rawType: rawType,
                     sourceLine: event.line
                 )
@@ -155,7 +155,7 @@ private extension CodexSessionImporter {
                     id: messageID,
                     role: .assistant,
                     timestamp: event.event.timestamp,
-                    text: event.event.payload?.message,
+                    preview: event.event.payload?.message?.trimmedPreview(),
                     rawType: rawType,
                     sourceLine: event.line
                 )
@@ -191,7 +191,7 @@ private extension CodexSessionImporter {
                 id: messageID,
                 role: .tool,
                 timestamp: event.event.timestamp,
-                text: event.event.payload?.name,
+                preview: event.event.payload?.name?.trimmedPreview(),
                 rawType: rawType,
                 sourceLine: event.line
             )
@@ -200,7 +200,6 @@ private extension CodexSessionImporter {
                 id: messageID,
                 role: .tool,
                 timestamp: event.event.timestamp,
-                text: event.event.payload?.output,
                 rawType: rawType,
                 sourceLine: event.line
             )
@@ -308,8 +307,19 @@ private struct CodexPayload: Decodable {
     let role: String?
     let message: String?
     let name: String?
-    let output: String?
     let info: CodexTokenInfo?
+}
+
+private extension String {
+    func trimmedPreview(limit: Int = 160) -> String {
+        let normalized = split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard normalized.count > limit else {
+            return normalized
+        }
+
+        let end = normalized.index(normalized.startIndex, offsetBy: limit)
+        return String(normalized[..<end])
+    }
 }
 
 private struct CodexTokenInfo: Decodable {

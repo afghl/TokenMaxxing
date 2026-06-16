@@ -12,7 +12,7 @@ public struct Message: Identifiable, Equatable, Sendable {
     public let id: String
     public let role: MessageRole
     public let timestamp: Date
-    public let text: String?
+    public let preview: String?
     public let usageSnapshot: TokenUsage?
     public let rawType: String?
     public let sourceLine: Int?
@@ -21,7 +21,7 @@ public struct Message: Identifiable, Equatable, Sendable {
         id: String,
         role: MessageRole,
         timestamp: Date,
-        text: String? = nil,
+        preview: String? = nil,
         usageSnapshot: TokenUsage? = nil,
         rawType: String? = nil,
         sourceLine: Int? = nil
@@ -29,7 +29,7 @@ public struct Message: Identifiable, Equatable, Sendable {
         self.id = id
         self.role = role
         self.timestamp = timestamp
-        self.text = text
+        self.preview = preview
         self.usageSnapshot = usageSnapshot
         self.rawType = rawType
         self.sourceLine = sourceLine
