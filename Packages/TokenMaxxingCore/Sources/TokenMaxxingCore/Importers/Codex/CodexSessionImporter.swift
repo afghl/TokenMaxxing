@@ -14,9 +14,15 @@ public final class CodexSessionImporter: SessionImporter {
     }
 
     public func importSessions() throws -> [Session] {
-        try sessionFileURLs()
+        tokenMaxxingDebugLog("Codex importer scanning root: \(root.path)")
+        let urls = try sessionFileURLs()
+        tokenMaxxingDebugLog("Codex importer found \(urls.count) JSONL files")
+
+        let sessions = try urls
             .compactMap { try importSession(at: $0) }
             .sorted { $0.startedAt > $1.startedAt }
+        tokenMaxxingDebugLog("Codex importer imported \(sessions.count) sessions")
+        return sessions
     }
 
     public func importSession(id: Session.ID) throws -> Session? {
@@ -30,6 +36,7 @@ public final class CodexSessionImporter: SessionImporter {
     public func importSession(at url: URL) throws -> Session {
         let events = try readEvents(at: url)
         guard let firstEvent = events.first, let lastEvent = events.last else {
+            tokenMaxxingDebugLog("Codex importer found empty session file: \(url.path)")
             throw CodexSessionImportError.emptySession(url)
         }
 
@@ -37,6 +44,9 @@ public final class CodexSessionImporter: SessionImporter {
         let turns = buildTurns(from: events, sessionID: sessionID)
         let totalUsage = events.lastUsageSnapshot
         let endedAt = turns.last?.status == .inProgress ? nil : lastEvent.event.timestamp
+        tokenMaxxingDebugLog(
+            "Codex session \(sessionID): events=\(events.count), turns=\(turns.count), totalTokens=\(totalUsage?.totalTokens ?? 0)"
+        )
 
         return Session(
             id: sessionID,
@@ -49,9 +59,18 @@ public final class CodexSessionImporter: SessionImporter {
     }
 }
 
-public enum CodexSessionImportError: Error, Equatable {
+public enum CodexSessionImportError: Error, Equatable, LocalizedError {
     case emptySession(URL)
     case decodingFailed(URL, line: Int)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .emptySession(url):
+            "Empty Codex session file: \(url.path)"
+        case let .decodingFailed(url, line):
+            "Failed to decode Codex session file \(url.path) at line \(line)"
+        }
+    }
 }
 
 private extension CodexSessionImporter {
@@ -64,11 +83,13 @@ private extension CodexSessionImporter {
         let archivedRoot = root.appendingPathComponent("archived_sessions", isDirectory: true)
         urls.append(contentsOf: try jsonlFiles(under: archivedRoot))
 
+        tokenMaxxingDebugLog("Codex importer discovered \(urls.count) session files")
         return urls.sorted { $0.path < $1.path }
     }
 
     func jsonlFiles(under directory: URL) throws -> [URL] {
         guard fileManager.fileExists(atPath: directory.path) else {
+            tokenMaxxingDebugLog("Codex importer directory not found or inaccessible: \(directory.path)")
             return []
         }
 
@@ -77,6 +98,7 @@ private extension CodexSessionImporter {
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
+            tokenMaxxingDebugLog("Codex importer could not enumerate directory: \(directory.path)")
             return []
         }
 
@@ -87,11 +109,18 @@ private extension CodexSessionImporter {
                 urls.append(url)
             }
         }
+        tokenMaxxingDebugLog("Codex importer found \(urls.count) JSONL files under \(directory.path)")
         return urls
     }
 
     func readEvents(at url: URL) throws -> [NumberedCodexEvent] {
-        let data = try Data(contentsOf: url)
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            tokenMaxxingDebugLog("Codex importer could not read \(url.path): \(error.localizedDescription)")
+            throw error
+        }
         let contents = String(decoding: data, as: UTF8.self)
         let decoder = JSONDecoder()
 
@@ -108,6 +137,9 @@ private extension CodexSessionImporter {
                     let event = try decoder.decode(CodexLogEntry.self, from: Data(trimmed.utf8))
                     return NumberedCodexEvent(event: event, line: offset + 1)
                 } catch {
+                    tokenMaxxingDebugLog(
+                        "Codex importer decode failed at \(url.path):\(offset + 1): \(error.localizedDescription)"
+                    )
                     throw CodexSessionImportError.decodingFailed(url, line: offset + 1)
                 }
             }

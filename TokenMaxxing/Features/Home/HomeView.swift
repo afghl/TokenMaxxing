@@ -181,37 +181,52 @@ private struct TokenUsageChart: View {
     }
 
     var body: some View {
-        Chart(points) { item in
-            if range == .day {
-                AreaMark(
-                    x: .value("Time", item.date),
-                    y: .value("Tokens", item.tokens)
-                )
-                .interpolationMethod(.catmullRom)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.tokenAccent.opacity(0.35), Color.tokenAccent.opacity(0.03)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-
-                LineMark(
-                    x: .value("Time", item.date),
-                    y: .value("Tokens", item.tokens)
-                )
-                .interpolationMethod(.catmullRom)
-                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                .foregroundStyle(Color.tokenAccent)
-            } else {
-                BarMark(
-                    x: .value("Date", item.date),
-                    y: .value("Tokens", item.tokens)
-                )
-                .foregroundStyle(Color.tokenAccent.gradient)
-                .cornerRadius(4)
-            }
+        switch range {
+        case .day:
+            styledChart(dayChart)
+        case .month, .year:
+            styledChart(barChart)
         }
+    }
+
+    private var dayChart: some View {
+        Chart(points) { item in
+            AreaMark(
+                x: .value("Time", item.date),
+                y: .value("Tokens", item.tokens)
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [Color.tokenAccent.opacity(0.35), Color.tokenAccent.opacity(0.03)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+
+            LineMark(
+                x: .value("Time", item.date),
+                y: .value("Tokens", item.tokens)
+            )
+            .interpolationMethod(.catmullRom)
+            .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .foregroundStyle(Color.tokenAccent)
+        }
+    }
+
+    private var barChart: some View {
+        Chart(points) { item in
+            BarMark(
+                x: .value("Date", item.date),
+                y: .value("Tokens", item.tokens)
+            )
+            .foregroundStyle(Color.tokenAccent.gradient)
+            .cornerRadius(4)
+        }
+    }
+
+    private func styledChart(_ chart: some View) -> some View {
+        chart
         .chartYScale(domain: 0...(Double(maxTokens) * 1.18))
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: range == .day ? 6 : 5)) { value in

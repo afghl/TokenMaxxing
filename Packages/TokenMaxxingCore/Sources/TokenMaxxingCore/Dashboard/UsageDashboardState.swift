@@ -94,17 +94,22 @@ public final class UsageDashboardState {
 
     @MainActor
     public func refreshFromCodexLogs(
-        root: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex"),
+        root: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+            ".codex"),
         now: Date = .now
     ) async {
         status = "Scanning local logs..."
+        tokenMaxxingDebugLog("Starting Codex log scan at \(root.path)")
 
         do {
             let sessions = try await Task.detached(priority: .userInitiated) {
                 try CodexSessionImporter(root: root).importSessions()
             }.value
+
+            tokenMaxxingDebugLog("Codex log scan returned \(sessions.count) sessions")
             apply(sessions: sessions, now: now)
         } catch {
+            tokenMaxxingDebugLog("Codex log scan failed: \(error.localizedDescription)")
             status = "Scan failed"
         }
     }
@@ -150,6 +155,9 @@ public final class UsageDashboardState {
         sessionCount = metrics.sessionCount
         turnCount = metrics.turnCount
         latestActivityAt = metrics.latestActivityAt
+        tokenMaxxingDebugLog(
+            "Dashboard metrics: sessions=\(sessionCount), turns=\(turnCount), totalTokens=\(totalTokens)"
+        )
         status = turnCount == 0 ? "No Codex usage found" : "Updated just now"
     }
 }
