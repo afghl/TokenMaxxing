@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+
+# Xcode
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Archives and debug symbols
+*.ipa
+*.dSYM/
+*.dSYM.zip
+*.xcarchive
+
+# Logs
+*.log
