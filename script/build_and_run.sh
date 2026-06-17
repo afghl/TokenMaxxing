@@ -19,6 +19,11 @@ xcodebuild \
   -derivedDataPath "$DERIVED_DATA" \
   build
 
+# Refresh LaunchServices metadata so icon changes show up for the same bundle id.
+/usr/bin/touch "$APP_BUNDLE"
+/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister \
+  -f -R -trusted "$APP_BUNDLE" >/dev/null 2>&1 || true
+
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
 }
