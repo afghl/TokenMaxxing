@@ -8,10 +8,7 @@ BUNDLE_ID="jun.TokenMaxxing"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA="$ROOT_DIR/build/DerivedData"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug/$APP_NAME.app"
-<<<<<<< HEAD
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
-=======
->>>>>>> cfd8479e970b25e5a463d58d5ecf3bc5cebaa3e3
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -23,14 +20,11 @@ xcodebuild \
   -derivedDataPath "$DERIVED_DATA" \
   build
 
-<<<<<<< HEAD
-=======
 # Refresh LaunchServices metadata so icon changes show up for the same bundle id.
 /usr/bin/touch "$APP_BUNDLE"
 /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister \
   -f -R -trusted "$APP_BUNDLE" >/dev/null 2>&1 || true
 
->>>>>>> cfd8479e970b25e5a463d58d5ecf3bc5cebaa3e3
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
 }
@@ -40,11 +34,7 @@ case "$MODE" in
     open_app
     ;;
   --debug|debug)
-<<<<<<< HEAD
     lldb -- "$APP_BINARY"
-=======
-    lldb -- "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
->>>>>>> cfd8479e970b25e5a463d58d5ecf3bc5cebaa3e3
     ;;
   --logs|logs)
     open_app
@@ -56,11 +46,7 @@ case "$MODE" in
     ;;
   --verify|verify)
     open_app
-<<<<<<< HEAD
     sleep 2
-=======
-    sleep 1
->>>>>>> cfd8479e970b25e5a463d58d5ecf3bc5cebaa3e3
     pgrep -x "$APP_NAME" >/dev/null
     ;;
   *)
