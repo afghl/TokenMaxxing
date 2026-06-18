@@ -9,7 +9,7 @@ final class UsageDashboardStateTests: XCTestCase {
         XCTAssertEqual(state.visibleUsage.count, 30)
 
         state.selectedRange = .day
-        XCTAssertEqual(state.visibleUsage.count, 24)
+        XCTAssertEqual(state.visibleUsage.count, 24 * 60)
 
         state.selectedRange = .year
         XCTAssertEqual(state.visibleUsage.count, 12)
@@ -23,6 +23,40 @@ final class UsageDashboardStateTests: XCTestCase {
         XCTAssertEqual(state.totalTokens, 350)
     }
 
+    func testDayVisibleUsageIsCumulativeWithinDay() throws {
+        let state = makeState()
+
+        state.selectedRange = .day
+
+        XCTAssertEqual(state.visibleUsage[8 * 60].tokens, 0)
+        XCTAssertEqual(state.visibleUsage[9 * 60].tokens, 250)
+        XCTAssertEqual(state.visibleUsage[10 * 60].tokens, 250)
+        XCTAssertEqual(state.visibleUsage[11 * 60].tokens, 350)
+        XCTAssertEqual(state.visibleUsage[23 * 60 + 59].tokens, 350)
+        XCTAssertEqual(state.totalTokens, 350)
+        XCTAssertEqual(state.peakUsage?.tokens, 250)
+    }
+
+    func testDayVisibleUsageUsesConfiguredGranularity() throws {
+        let state = makeState(configuration: UsageDashboardConfiguration(dayBucketMinutes: 15))
+
+        state.selectedRange = .day
+
+        XCTAssertEqual(state.visibleUsage.count, 96)
+        XCTAssertEqual(state.visibleUsage[8 * 4].tokens, 0)
+        XCTAssertEqual(state.visibleUsage[9 * 4].tokens, 250)
+        XCTAssertEqual(state.visibleUsage[10 * 4].tokens, 250)
+        XCTAssertEqual(state.visibleUsage[11 * 4].tokens, 350)
+        XCTAssertEqual(state.visibleUsage[23 * 4 + 3].tokens, 350)
+        XCTAssertEqual(state.totalTokens, 350)
+        XCTAssertEqual(state.peakUsage?.tokens, 250)
+    }
+
+    func testDayGranularityIsClampedToSupportedRange() throws {
+        XCTAssertEqual(UsageDashboardConfiguration(dayBucketMinutes: 0).dayBucketMinutes, 1)
+        XCTAssertEqual(UsageDashboardConfiguration(dayBucketMinutes: 61).dayBucketMinutes, 60)
+    }
+
     func testStatusReflectsInitialSessionData() throws {
         let state = makeState()
 
@@ -32,7 +66,9 @@ final class UsageDashboardStateTests: XCTestCase {
         XCTAssertEqual(state.activeDays, 3)
     }
 
-    private func makeState() -> UsageDashboardState {
+    private func makeState(
+        configuration: UsageDashboardConfiguration = UsageDashboardConfiguration()
+    ) -> UsageDashboardState {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let now = DateComponents(
@@ -44,7 +80,12 @@ final class UsageDashboardStateTests: XCTestCase {
             hour: 12
         ).date!
 
-        return UsageDashboardState(calendar: calendar, now: now, sessions: makeSessions(calendar: calendar))
+        return UsageDashboardState(
+            configuration: configuration,
+            calendar: calendar,
+            now: now,
+            sessions: makeSessions(calendar: calendar)
+        )
     }
 
     private func makeSessions(calendar: Calendar) -> [Session] {

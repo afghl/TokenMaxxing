@@ -6,6 +6,7 @@ public final class UsageDashboardState {
     public var selectedRange: UsageRange = .month
     public var status = "No local scan yet"
 
+    public private(set) var intradayUsage: [TokenUsagePoint]
     public private(set) var hourlyUsage: [TokenUsagePoint]
     public private(set) var dailyUsage: [TokenUsagePoint]
     public private(set) var monthlyUsage: [TokenUsagePoint]
@@ -14,23 +15,34 @@ public final class UsageDashboardState {
     public private(set) var turnCount: Int
     public private(set) var latestActivityAt: Date?
 
+    private var previousIntradayUsage: [TokenUsagePoint]
     private var previousHourlyUsage: [TokenUsagePoint]
     private var previousDailyUsage: [TokenUsagePoint]
     private var previousMonthlyUsage: [TokenUsagePoint]
 
+    private let configuration: UsageDashboardConfiguration
     private let calendar: Calendar
 
-    public init(calendar: Calendar = .current, now: Date = .now, sessions: [Session] = []) {
+    public init(
+        configuration: UsageDashboardConfiguration = UsageDashboardConfiguration(),
+        calendar: Calendar = .current,
+        now: Date = .now,
+        sessions: [Session] = []
+    ) {
+        self.configuration = configuration
         self.calendar = calendar
 
         let metrics = TokenUsageAggregator.dashboardMetrics(
             from: sessions,
             calendar: calendar,
-            now: now
+            now: now,
+            dayBucketMinutes: configuration.dayBucketMinutes
         )
+        intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
         monthlyUsage = metrics.monthlyUsage
+        previousIntradayUsage = metrics.previousIntradayUsage
         previousHourlyUsage = metrics.previousHourlyUsage
         previousDailyUsage = metrics.previousDailyUsage
         previousMonthlyUsage = metrics.previousMonthlyUsage
@@ -46,7 +58,7 @@ public final class UsageDashboardState {
     public var visibleUsage: [TokenUsagePoint] {
         switch selectedRange {
         case .day:
-            hourlyUsage
+            cumulativeUsage(from: intradayUsage)
         case .month:
             dailyUsage
         case .year:
@@ -55,16 +67,17 @@ public final class UsageDashboardState {
     }
 
     public var totalTokens: Int {
-        total(for: visibleUsage)
+        total(for: usageForSelectedRange)
     }
 
     public var averageTokens: Int {
-        guard !visibleUsage.isEmpty else { return 0 }
-        return totalTokens / visibleUsage.count
+        let points = usageForSelectedRange
+        guard !points.isEmpty else { return 0 }
+        return totalTokens / points.count
     }
 
     public var peakUsage: TokenUsagePoint? {
-        visibleUsage.max { $0.tokens < $1.tokens }
+        usageForSelectedRange.max { $0.tokens < $1.tokens }
     }
 
     public var trendDescription: String {
@@ -117,7 +130,7 @@ public final class UsageDashboardState {
     public func formatPeakLabel(_ point: TokenUsagePoint) -> String {
         switch selectedRange {
         case .day:
-            point.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)))
+            point.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)).minute())
         case .month:
             point.date.formatted(.dateTime.month(.abbreviated).day())
         case .year:
@@ -128,7 +141,7 @@ public final class UsageDashboardState {
     private var previousTotalTokens: Int {
         switch selectedRange {
         case .day:
-            total(for: previousHourlyUsage)
+            total(for: previousIntradayUsage)
         case .month:
             total(for: previousDailyUsage)
         case .year:
@@ -136,19 +149,41 @@ public final class UsageDashboardState {
         }
     }
 
+    private var usageForSelectedRange: [TokenUsagePoint] {
+        switch selectedRange {
+        case .day:
+            intradayUsage
+        case .month:
+            dailyUsage
+        case .year:
+            monthlyUsage
+        }
+    }
+
     private func total(for points: [TokenUsagePoint]) -> Int {
         points.reduce(0) { $0 + $1.tokens }
+    }
+
+    private func cumulativeUsage(from points: [TokenUsagePoint]) -> [TokenUsagePoint] {
+        var runningTotal = 0
+        return points.map { point in
+            runningTotal += point.tokens
+            return TokenUsagePoint(date: point.date, tokens: runningTotal)
+        }
     }
 
     private func apply(sessions: [Session], now: Date) {
         let metrics = TokenUsageAggregator.dashboardMetrics(
             from: sessions,
             calendar: calendar,
-            now: now
+            now: now,
+            dayBucketMinutes: configuration.dayBucketMinutes
         )
+        intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
         monthlyUsage = metrics.monthlyUsage
+        previousIntradayUsage = metrics.previousIntradayUsage
         previousHourlyUsage = metrics.previousHourlyUsage
         previousDailyUsage = metrics.previousDailyUsage
         previousMonthlyUsage = metrics.previousMonthlyUsage

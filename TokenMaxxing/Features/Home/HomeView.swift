@@ -12,23 +12,54 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    overview
-                    rangePicker
-                    usageCard
-                    summaryGrid
-                    recentUsage
+                GlassEffectContainer(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        overview
+                        rangePicker
+                        usageCard
+                        summaryGrid
+                        recentUsage
+                    }
+                    .frame(maxWidth: 980, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 18)
                 }
-                .frame(maxWidth: 980, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 18)
             }
-            .background(Color.appBackground.ignoresSafeArea())
+            .background {
+                pageBackground
+            }
             .navigationTitle("TokenMaxxing")
         }
         #if os(macOS)
             .frame(minWidth: 760, minHeight: 720)
         #endif
+    }
+
+    private var pageBackground: some View {
+        ZStack {
+            Color.appBackground
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.56),
+                    Color.white.opacity(0.18),
+                    Color.clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.tokenAccent.opacity(0.045),
+                    Color.summaryBlue.opacity(0.035),
+                    Color.clear
+                ],
+                startPoint: .topTrailing,
+                endPoint: .bottomLeading
+            )
+        }
+        .ignoresSafeArea()
     }
 
     private var overview: some View {
@@ -81,8 +112,9 @@ struct HomeView: View {
                     Label("Scan", systemImage: "arrow.clockwise")
                         .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .tint(Color.tokenAccent)
+                .controlSize(.regular)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -100,11 +132,10 @@ struct HomeView: View {
                 .frame(height: 280)
         }
         .padding(20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(.white.opacity(0.28), lineWidth: 1)
-        }
+        .glassEffect(
+            .regular.interactive(),
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+        )
         .task {
             await dashboard.refreshFromCodexLogs()
         }
@@ -162,10 +193,9 @@ struct HomeView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .padding(16)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -282,7 +312,7 @@ private struct SummaryTile: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(tint)
                     .frame(width: 24, height: 24)
-                    .background(tint.opacity(0.16), in: Circle())
+                    .background(tint.opacity(0.14), in: Circle())
 
                 Text(title)
                     .font(.caption.weight(.semibold))
@@ -304,7 +334,11 @@ private struct SummaryTile: View {
         }
         .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.white.opacity(0.18), lineWidth: 1)
+        }
     }
 }
 
