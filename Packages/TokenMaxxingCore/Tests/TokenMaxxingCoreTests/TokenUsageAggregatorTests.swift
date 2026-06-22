@@ -2,7 +2,7 @@ import XCTest
 @testable import TokenMaxxingCore
 
 final class TokenUsageAggregatorTests: XCTestCase {
-    func testIntradayUsageAggregatesTurnUsageByStartMinuteAndFillsMissingMinutes() throws {
+    func testIntradayUsageAggregatesTurnUsageByDefaultBucketAndFillsMissingBuckets() throws {
         let calendar = makeCalendar()
         let now = date(calendar, month: 6, day: 16, hour: 12)
         let sessions = [
@@ -22,11 +22,11 @@ final class TokenUsageAggregatorTests: XCTestCase {
             dayContaining: now
         )
 
-        XCTAssertEqual(points.count, 24 * 60)
-        XCTAssertEqual(points[9 * 60 + 14].tokens, 0)
-        XCTAssertEqual(points[9 * 60 + 15].tokens, 150)
-        XCTAssertEqual(points[9 * 60 + 16].tokens, 200)
-        XCTAssertEqual(points[23 * 60 + 59].tokens, 0)
+        XCTAssertEqual(points.count, 24 * 6)
+        XCTAssertEqual(points[9 * 6].tokens, 0)
+        XCTAssertEqual(points[9 * 6 + 1].tokens, 350)
+        XCTAssertEqual(points[9 * 6 + 2].tokens, 0)
+        XCTAssertEqual(points[23 * 6 + 5].tokens, 0)
     }
 
     func testIntradayUsageCanUseConfiguredMinuteBuckets() throws {
