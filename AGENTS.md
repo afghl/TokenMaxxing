@@ -45,9 +45,14 @@ SwiftUI View
     -> Feature ViewModel / Presentation State, when needed
     -> App State / Store, when shared state is needed
     -> Core UseCase
-    -> Core Domain Model / Domain Service
+
+Core UseCase
+    -> Domain Model / Domain Service
     -> Repository protocol
-    -> Infrastructure implementation
+
+Infrastructure
+    -> implements Repository protocol
+    -> owns filesystem/database/network/provider-specific details
 ```
 
 Rules:
@@ -78,7 +83,7 @@ TokenMaxxing/
     <FeatureName>/
       <FeatureName>View.swift
       <FeatureName>ViewModel.swift
-      <FeatureName>Models.swift
+      <FeatureName>PresentationModels.swift
 
   SharedUI/                    # Reusable UI pieces that are not tied to one feature.
     Components/
@@ -88,11 +93,13 @@ TokenMaxxing/
 Packages/
   TokenMaxxingCore/            # Reusable core package; keep it UI-platform independent.
     Sources/TokenMaxxingCore/
-      Models/                  # Domain entities and value objects.
-      Services/                # Pure domain calculations.
+      Domain/                  # Harness-neutral entities and value objects.
+      Importing/               # SessionImporter protocol and external log adapters.
+      Analytics/               # Pure usage, cost, cache, and dashboard calculations.
       UseCases/                # Application workflows / user-intent actions.
-      Repositories/            # Data access protocols and persistence boundaries.
-      Importers/               # Adapters that parse external logs into domain models.
+      Repositories/            # Data access protocols only.
+      Infrastructure/          # Filesystem, database, network, and provider clients.
+      Support/                 # Tiny shared helpers; keep this folder small.
 
     Tests/TokenMaxxingCoreTests/
 ```
@@ -103,6 +110,7 @@ When modifying the current codebase:
 * Put SwiftUI screens under `TokenMaxxing/Features/<FeatureName>`.
 * Put shared observable app state under `TokenMaxxing/AppState`.
 * Put reusable UI under `TokenMaxxing/SharedUI`.
+* In the core package, prefer `Domain`, `Importing`, `Analytics`, `UseCases`, `Repositories`, `Infrastructure`, and `Support` over broad catch-all folders.
 * Prefer small focused files over large mixed-purpose files.
 * Do not add a new package target until there is a real module boundary.
 * Do not move existing files, rename targets, rename schemes, or restructure folders unless the task explicitly requires it.
