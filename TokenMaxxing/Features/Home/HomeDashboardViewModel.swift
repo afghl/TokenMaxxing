@@ -1,43 +1,43 @@
 import Foundation
 import Observation
+import TokenMaxxingCore
 
 @Observable
-public final class UsageDashboardState {
-    public var selectedRange: UsageRange = .month
-    public var status = "No local scan yet"
+final class HomeDashboardViewModel {
+    var selectedRange: UsageRange = .month
+    var status = "No local scan yet"
 
-    public private(set) var intradayUsage: [TokenUsagePoint]
-    public private(set) var hourlyUsage: [TokenUsagePoint]
-    public private(set) var dailyUsage: [TokenUsagePoint]
-    public private(set) var monthlyUsage: [TokenUsagePoint]
+    private(set) var intradayUsage: [TokenUsagePoint]
+    private(set) var hourlyUsage: [TokenUsagePoint]
+    private(set) var dailyUsage: [TokenUsagePoint]
+    private(set) var monthlyUsage: [TokenUsagePoint]
 
-    public private(set) var sessionCount: Int
-    public private(set) var turnCount: Int
-    public private(set) var latestActivityAt: Date?
+    private(set) var sessionCount: Int
+    private(set) var turnCount: Int
+    private(set) var latestActivityAt: Date?
 
     private var previousIntradayUsage: [TokenUsagePoint]
     private var previousHourlyUsage: [TokenUsagePoint]
     private var previousDailyUsage: [TokenUsagePoint]
     private var previousMonthlyUsage: [TokenUsagePoint]
 
-    private let configuration: UsageDashboardConfiguration
-    private let calendar: Calendar
+    private let scanCodexDashboardUseCase: ScanCodexDashboardUseCase
 
-    public init(
+    init(
         configuration: UsageDashboardConfiguration = UsageDashboardConfiguration(),
         calendar: Calendar = .current,
         now: Date = .now,
         sessions: [Session] = []
     ) {
-        self.configuration = configuration
-        self.calendar = calendar
-
-        let metrics = TokenUsageAggregator.dashboardMetrics(
-            from: sessions,
-            calendar: calendar,
-            now: now,
-            dayBucketMinutes: configuration.dayBucketMinutes
+        let buildDashboardUseCase = BuildDashboardUseCase(
+            configuration: configuration,
+            calendar: calendar
         )
+        scanCodexDashboardUseCase = ScanCodexDashboardUseCase(
+            buildDashboard: buildDashboardUseCase
+        )
+
+        let metrics = buildDashboardUseCase.execute(sessions: sessions, now: now)
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
@@ -55,7 +55,7 @@ public final class UsageDashboardState {
         }
     }
 
-    public var visibleUsage: [TokenUsagePoint] {
+    var visibleUsage: [TokenUsagePoint] {
         switch selectedRange {
         case .day:
             cumulativeUsage(from: intradayUsage)
@@ -66,21 +66,21 @@ public final class UsageDashboardState {
         }
     }
 
-    public var totalTokens: Int {
+    var totalTokens: Int {
         total(for: usageForSelectedRange)
     }
 
-    public var averageTokens: Int {
+    var averageTokens: Int {
         let points = usageForSelectedRange
         guard !points.isEmpty else { return 0 }
         return totalTokens / points.count
     }
 
-    public var peakUsage: TokenUsagePoint? {
+    var peakUsage: TokenUsagePoint? {
         usageForSelectedRange.max { $0.tokens < $1.tokens }
     }
 
-    public var trendDescription: String {
+    var trendDescription: String {
         let previous = previousTotalTokens
         guard previous > 0 else { return "No previous period yet" }
 
@@ -90,44 +90,45 @@ public final class UsageDashboardState {
         return "\(direction) \(percentage)% vs \(selectedRange.previousPeriodLabel)"
     }
 
-    public var projectedMonthTokens: Int {
+    var projectedMonthTokens: Int {
         let elapsedDays = max(dailyUsage.count, 1)
         return (total(for: dailyUsage) / elapsedDays) * 30
     }
 
-    public var weekAverageTokens: Int {
+    var weekAverageTokens: Int {
         let lastSevenDays = dailyUsage.suffix(7)
         guard !lastSevenDays.isEmpty else { return 0 }
         return lastSevenDays.reduce(0) { $0 + $1.tokens } / lastSevenDays.count
     }
 
-    public var activeDays: Int {
+    var activeDays: Int {
         dailyUsage.filter { $0.tokens > 0 }.count
     }
 
     @MainActor
-    public func refreshFromCodexLogs(
+    func refreshFromCodexLogs(
         root: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
             ".codex"),
         now: Date = .now
     ) async {
         status = "Scanning local logs..."
-        tokenMaxxingDebugLog("Starting Codex log scan at \(root.path)")
+        homeDashboardDebugLog("Starting Codex log scan at \(root.path)")
 
         do {
-            let sessions = try await Task.detached(priority: .userInitiated) {
-                try CodexSessionImporter(root: root).importSessions()
+            let scanCodexDashboardUseCase = scanCodexDashboardUseCase
+            let metrics = try await Task.detached(priority: .userInitiated) {
+                try scanCodexDashboardUseCase.execute(root: root, now: now)
             }.value
 
-            tokenMaxxingDebugLog("Codex log scan returned \(sessions.count) sessions")
-            apply(sessions: sessions, now: now)
+            homeDashboardDebugLog("Codex log scan returned \(metrics.sessionCount) sessions")
+            apply(metrics: metrics)
         } catch {
-            tokenMaxxingDebugLog("Codex log scan failed: \(error.localizedDescription)")
+            homeDashboardDebugLog("Codex log scan failed: \(error.localizedDescription)")
             status = "Scan failed"
         }
     }
 
-    public func formatPeakLabel(_ point: TokenUsagePoint) -> String {
+    func formatPeakLabel(_ point: TokenUsagePoint) -> String {
         switch selectedRange {
         case .day:
             point.date.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated)).minute())
@@ -172,13 +173,7 @@ public final class UsageDashboardState {
         }
     }
 
-    private func apply(sessions: [Session], now: Date) {
-        let metrics = TokenUsageAggregator.dashboardMetrics(
-            from: sessions,
-            calendar: calendar,
-            now: now,
-            dayBucketMinutes: configuration.dayBucketMinutes
-        )
+    private func apply(metrics: UsageDashboardMetrics) {
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
@@ -190,9 +185,15 @@ public final class UsageDashboardState {
         sessionCount = metrics.sessionCount
         turnCount = metrics.turnCount
         latestActivityAt = metrics.latestActivityAt
-        tokenMaxxingDebugLog(
+        homeDashboardDebugLog(
             "Dashboard metrics: sessions=\(sessionCount), turns=\(turnCount), totalTokens=\(totalTokens)"
         )
         status = turnCount == 0 ? "No Codex usage found" : "Updated just now"
     }
+}
+
+private func homeDashboardDebugLog(_ message: @autoclosure () -> String) {
+#if DEBUG
+    print("[TokenMaxxing] \(message())")
+#endif
 }

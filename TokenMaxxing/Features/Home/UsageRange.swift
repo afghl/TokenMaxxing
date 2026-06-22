@@ -1,11 +1,11 @@
-public enum UsageRange: String, CaseIterable, Identifiable, Sendable {
+enum UsageRange: String, CaseIterable, Identifiable, Sendable {
     case day = "Day"
     case month = "Month"
     case year = "Year"
 
-    public var id: Self { self }
+    var id: Self { self }
 
-    public var headline: String {
+    var headline: String {
         switch self {
         case .day:
             "Today"
@@ -16,7 +16,7 @@ public enum UsageRange: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public var chartTitle: String {
+    var chartTitle: String {
         switch self {
         case .day:
             "Intraday Token Trend"
@@ -27,7 +27,7 @@ public enum UsageRange: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public var totalLabel: String {
+    var totalLabel: String {
         switch self {
         case .day:
             "tokens today"
@@ -38,7 +38,7 @@ public enum UsageRange: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public var averageLabel: String {
+    var averageLabel: String {
         switch self {
         case .day:
             "Avg per interval"
@@ -49,7 +49,7 @@ public enum UsageRange: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public var peakLabel: String {
+    var peakLabel: String {
         switch self {
         case .day:
             "Peak interval"
@@ -60,7 +60,7 @@ public enum UsageRange: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public var previousPeriodLabel: String {
+    var previousPeriodLabel: String {
         switch self {
         case .day:
             "yesterday"

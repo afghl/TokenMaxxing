@@ -1,9 +1,8 @@
-import Charts
 import SwiftUI
 import TokenMaxxingCore
 
 struct HomeView: View {
-    @State private var dashboard = UsageDashboardState()
+    @State private var dashboard = HomeDashboardViewModel()
 
     private let summaryColumns = [
         GridItem(.adaptive(minimum: 156), spacing: 12, alignment: .top)
@@ -37,7 +36,7 @@ struct HomeView: View {
 
     private var pageBackground: some View {
         ZStack {
-            Color.appBackground
+            HomePalette.appBackground
 
             LinearGradient(
                 colors: [
@@ -51,8 +50,8 @@ struct HomeView: View {
 
             LinearGradient(
                 colors: [
-                    Color.tokenAccent.opacity(0.045),
-                    Color.summaryBlue.opacity(0.035),
+                    HomePalette.tokenAccent.opacity(0.045),
+                    HomePalette.summaryBlue.opacity(0.035),
                     Color.clear
                 ],
                 startPoint: .topTrailing,
@@ -95,7 +94,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Label(dashboard.selectedRange.chartTitle, systemImage: "chart.xyaxis.line")
                         .font(.headline)
-                        .foregroundStyle(Color.tokenAccent)
+                        .foregroundStyle(HomePalette.tokenAccent)
 
                     Text(dashboard.trendDescription)
                         .font(.subheadline)
@@ -113,7 +112,7 @@ struct HomeView: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(Color.tokenAccent)
+                .tint(HomePalette.tokenAccent)
                 .controlSize(.regular)
             }
 
@@ -148,7 +147,7 @@ struct HomeView: View {
                 value: dashboard.averageTokens.formatted(),
                 subtitle: "tokens",
                 systemImage: "waveform.path.ecg",
-                tint: .summaryBlue
+                tint: HomePalette.summaryBlue
             )
 
             SummaryTile(
@@ -157,7 +156,7 @@ struct HomeView: View {
                 subtitle: dashboard.peakUsage.map { "\($0.tokens.formatted()) tokens" }
                     ?? "No data",
                 systemImage: "flame.fill",
-                tint: .summaryRed
+                tint: HomePalette.summaryRed
             )
 
             SummaryTile(
@@ -165,7 +164,7 @@ struct HomeView: View {
                 value: dashboard.weekAverageTokens.formatted(),
                 subtitle: "tokens per day",
                 systemImage: "calendar",
-                tint: .summaryGreen
+                tint: HomePalette.summaryGreen
             )
 
             SummaryTile(
@@ -173,7 +172,7 @@ struct HomeView: View {
                 value: dashboard.activeDays.formatted(),
                 subtitle: "last 30 days",
                 systemImage: "arrow.up.right",
-                tint: .summaryPurple
+                tint: HomePalette.summaryPurple
             )
         }
     }
@@ -201,182 +200,4 @@ struct HomeView: View {
 
 #Preview {
     HomeView()
-}
-
-private struct TokenUsageChart: View {
-    let range: UsageRange
-    let points: [TokenUsagePoint]
-
-    private var maxTokens: Int {
-        max(points.map(\.tokens).max() ?? 1, 1)
-    }
-
-    var body: some View {
-        switch range {
-        case .day:
-            styledChart(dayChart)
-        case .month, .year:
-            styledChart(barChart)
-        }
-    }
-
-    private var dayChart: some View {
-        Chart(points) { item in
-            AreaMark(
-                x: .value("Time", item.date),
-                y: .value("Tokens", item.tokens)
-            )
-            .interpolationMethod(.catmullRom)
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [Color.tokenAccent.opacity(0.35), Color.tokenAccent.opacity(0.03)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-
-            LineMark(
-                x: .value("Time", item.date),
-                y: .value("Tokens", item.tokens)
-            )
-            .interpolationMethod(.linear)
-            .lineStyle(.init(lineWidth: 3, lineCap: .butt, lineJoin: .miter))
-            .foregroundStyle(Color.tokenAccent)
-        }
-    }
-
-    private var barChart: some View {
-        Chart(points) { item in
-            BarMark(
-                x: .value("Date", item.date),
-                y: .value("Tokens", item.tokens)
-            )
-            .foregroundStyle(Color.tokenAccent.gradient)
-            .cornerRadius(4)
-        }
-    }
-
-    private func styledChart(_ chart: some View) -> some View {
-        chart
-            .chartYScale(domain: 0...(Double(maxTokens) * 1.18))
-            .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: range == .day ? 6 : 5)) { value in
-                    AxisGridLine()
-                        .foregroundStyle(.secondary.opacity(0.22))
-                    AxisTick()
-                        .foregroundStyle(.secondary.opacity(0.35))
-
-                    if let date = value.as(Date.self) {
-                        AxisValueLabel {
-                            Text(axisLabel(for: date))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
-                    AxisGridLine()
-                        .foregroundStyle(.secondary.opacity(0.18))
-                    AxisValueLabel()
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-    }
-
-    private func axisLabel(for date: Date) -> String {
-        switch range {
-        case .day:
-            date.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)))
-        case .month:
-            date.formatted(.dateTime.day())
-        case .year:
-            date.formatted(.dateTime.month(.abbreviated))
-        }
-    }
-}
-
-private struct SummaryTile: View {
-    let title: String
-    let value: String
-    let subtitle: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 24, height: 24)
-                    .background(tint.opacity(0.14), in: Circle())
-
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.title2.weight(.bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.white.opacity(0.18), lineWidth: 1)
-        }
-    }
-}
-
-private struct UsageRow: View {
-    let point: TokenUsagePoint
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "circle.hexagongrid.fill")
-                .foregroundStyle(Color.tokenAccent)
-                .font(.system(size: 20))
-                .frame(width: 30, height: 30)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(point.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                    .font(.subheadline.weight(.semibold))
-
-                Text("Daily token volume")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 12)
-
-            Text(point.tokens.formatted())
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .padding(.vertical, 11)
-    }
-}
-
-extension Color {
-    fileprivate static let appBackground = Color(red: 0.95, green: 0.95, blue: 0.97)
-    fileprivate static let tokenAccent = Color(red: 0.98, green: 0.38, blue: 0.13)
-    fileprivate static let summaryBlue = Color(red: 0.12, green: 0.43, blue: 0.92)
-    fileprivate static let summaryGreen = Color(red: 0.06, green: 0.55, blue: 0.32)
-    fileprivate static let summaryPurple = Color(red: 0.48, green: 0.28, blue: 0.88)
-    fileprivate static let summaryRed = Color(red: 0.88, green: 0.14, blue: 0.21)
 }
