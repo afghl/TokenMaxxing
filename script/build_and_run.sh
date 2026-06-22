@@ -8,6 +8,7 @@ BUNDLE_ID="jun.TokenMaxxing"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA="$ROOT_DIR/build/DerivedData"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug/$APP_NAME.app"
+APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
@@ -33,7 +34,7 @@ case "$MODE" in
     open_app
     ;;
   --debug|debug)
-    lldb -- "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+    lldb -- "$APP_BINARY"
     ;;
   --logs|logs)
     open_app
@@ -45,7 +46,7 @@ case "$MODE" in
     ;;
   --verify|verify)
     open_app
-    sleep 1
+    sleep 2
     pgrep -x "$APP_NAME" >/dev/null
     ;;
   *)
