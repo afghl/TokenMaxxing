@@ -19,7 +19,8 @@ final class TokenUsageAggregatorTests: XCTestCase {
         let points = TokenUsageAggregator.intradayUsage(
             from: sessions,
             calendar: calendar,
-            dayContaining: now
+            dayContaining: now,
+            bucketMinutes: 1
         )
 
         XCTAssertEqual(points.count, 24 * 60)

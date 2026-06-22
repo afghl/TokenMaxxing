@@ -9,7 +9,7 @@ final class UsageDashboardStateTests: XCTestCase {
         XCTAssertEqual(state.visibleUsage.count, 30)
 
         state.selectedRange = .day
-        XCTAssertEqual(state.visibleUsage.count, 24 * 60)
+        XCTAssertEqual(state.visibleUsage.count, defaultDayPointCount)
 
         state.selectedRange = .year
         XCTAssertEqual(state.visibleUsage.count, 12)
@@ -28,11 +28,11 @@ final class UsageDashboardStateTests: XCTestCase {
 
         state.selectedRange = .day
 
-        XCTAssertEqual(state.visibleUsage[8 * 60].tokens, 0)
-        XCTAssertEqual(state.visibleUsage[9 * 60].tokens, 250)
-        XCTAssertEqual(state.visibleUsage[10 * 60].tokens, 250)
-        XCTAssertEqual(state.visibleUsage[11 * 60].tokens, 350)
-        XCTAssertEqual(state.visibleUsage[23 * 60 + 59].tokens, 350)
+        XCTAssertEqual(state.visibleUsage[8 * defaultBucketsPerHour].tokens, 0)
+        XCTAssertEqual(state.visibleUsage[9 * defaultBucketsPerHour].tokens, 250)
+        XCTAssertEqual(state.visibleUsage[10 * defaultBucketsPerHour].tokens, 250)
+        XCTAssertEqual(state.visibleUsage[11 * defaultBucketsPerHour].tokens, 350)
+        XCTAssertEqual(state.visibleUsage[defaultDayPointCount - 1].tokens, 350)
         XCTAssertEqual(state.totalTokens, 350)
         XCTAssertEqual(state.peakUsage?.tokens, 250)
     }
@@ -86,6 +86,14 @@ final class UsageDashboardStateTests: XCTestCase {
             now: now,
             sessions: makeSessions(calendar: calendar)
         )
+    }
+
+    private var defaultBucketsPerHour: Int {
+        60 / UsageDashboardConfiguration.defaultDayBucketMinutes
+    }
+
+    private var defaultDayPointCount: Int {
+        24 * defaultBucketsPerHour
     }
 
     private func makeSessions(calendar: Calendar) -> [Session] {
