@@ -91,30 +91,14 @@ struct HomeView: View {
 
     private var usageCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 7) {
-                    Label(dashboard.selectedRange.chartTitle, systemImage: "chart.xyaxis.line")
-                        .font(.headline)
-                        .foregroundStyle(Color.tokenAccent)
+            VStack(alignment: .leading, spacing: 7) {
+                Label(dashboard.selectedRange.chartTitle, systemImage: "chart.xyaxis.line")
+                    .font(.headline)
+                    .foregroundStyle(Color.tokenAccent)
 
-                    Text(dashboard.trendDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 10)
-
-                Button {
-                    Task {
-                        await dashboard.refreshFromCodexLogs()
-                    }
-                } label: {
-                    Label("Scan", systemImage: "arrow.clockwise")
-                        .labelStyle(.titleAndIcon)
-                }
-                .buttonStyle(.glassProminent)
-                .tint(Color.tokenAccent)
-                .controlSize(.regular)
+                Text(dashboard.trendDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 2) {

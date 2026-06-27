@@ -4,7 +4,7 @@ import Observation
 @Observable
 public final class UsageDashboardState {
     public var selectedRange: UsageRange = .month
-    public var status = "No local scan yet"
+    public var status = "No usage data"
 
     public private(set) var intradayUsage: [TokenUsagePoint]
     public private(set) var hourlyUsage: [TokenUsagePoint]
@@ -77,7 +77,9 @@ public final class UsageDashboardState {
     }
 
     public var peakUsage: TokenUsagePoint? {
-        usageForSelectedRange.max { $0.tokens < $1.tokens }
+        let points = usageForSelectedRange
+        guard points.contains(where: { $0.tokens > 0 }) else { return nil }
+        return points.max { $0.tokens < $1.tokens }
     }
 
     public var trendDescription: String {
@@ -111,19 +113,19 @@ public final class UsageDashboardState {
             ".codex"),
         now: Date = .now
     ) async {
-        status = "Scanning local logs..."
-        tokenMaxxingDebugLog("Starting Codex log scan at \(root.path)")
+        status = "Importing local logs..."
+        tokenMaxxingDebugLog("Starting Codex log import at \(root.path)")
 
         do {
             let sessions = try await Task.detached(priority: .userInitiated) {
                 try CodexSessionImporter(root: root).importSessions()
             }.value
 
-            tokenMaxxingDebugLog("Codex log scan returned \(sessions.count) sessions")
+            tokenMaxxingDebugLog("Codex log import returned \(sessions.count) sessions")
             apply(sessions: sessions, now: now)
         } catch {
-            tokenMaxxingDebugLog("Codex log scan failed: \(error.localizedDescription)")
-            status = "Scan failed"
+            tokenMaxxingDebugLog("Codex log import failed: \(error.localizedDescription)")
+            status = "Import failed"
         }
     }
 

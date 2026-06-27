@@ -66,8 +66,19 @@ final class UsageDashboardStateTests: XCTestCase {
         XCTAssertEqual(state.activeDays, 3)
     }
 
+    func testEmptyStateDoesNotReportPeakUsage() throws {
+        let state = makeState(sessions: [])
+
+        XCTAssertEqual(state.status, "No usage data")
+        XCTAssertNil(state.peakUsage)
+        XCTAssertEqual(state.totalTokens, 0)
+        XCTAssertEqual(state.sessionCount, 0)
+        XCTAssertEqual(state.turnCount, 0)
+    }
+
     private func makeState(
-        configuration: UsageDashboardConfiguration = UsageDashboardConfiguration()
+        configuration: UsageDashboardConfiguration = UsageDashboardConfiguration(),
+        sessions: [Session]? = nil
     ) -> UsageDashboardState {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -84,7 +95,7 @@ final class UsageDashboardStateTests: XCTestCase {
             configuration: configuration,
             calendar: calendar,
             now: now,
-            sessions: makeSessions(calendar: calendar)
+            sessions: sessions ?? makeSessions(calendar: calendar)
         )
     }
 
