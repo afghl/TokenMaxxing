@@ -1,6 +1,8 @@
 import Foundation
 
 public struct UsageDashboardMetrics: Equatable, Sendable {
+    public let intradayComparison: IntradayUsageComparison
+
     public let intradayUsage: [TokenUsagePoint]
     public let hourlyUsage: [TokenUsagePoint]
     public let dailyUsage: [TokenUsagePoint]
@@ -16,6 +18,7 @@ public struct UsageDashboardMetrics: Equatable, Sendable {
     public let latestActivityAt: Date?
 
     public init(
+        intradayComparison: IntradayUsageComparison,
         intradayUsage: [TokenUsagePoint],
         hourlyUsage: [TokenUsagePoint],
         dailyUsage: [TokenUsagePoint],
@@ -28,6 +31,7 @@ public struct UsageDashboardMetrics: Equatable, Sendable {
         turnCount: Int,
         latestActivityAt: Date?
     ) {
+        self.intradayComparison = intradayComparison
         self.intradayUsage = intradayUsage
         self.hourlyUsage = hourlyUsage
         self.dailyUsage = dailyUsage

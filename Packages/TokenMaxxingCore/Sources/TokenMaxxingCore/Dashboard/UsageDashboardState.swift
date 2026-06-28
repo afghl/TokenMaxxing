@@ -10,6 +10,7 @@ public final class UsageDashboardState {
     public private(set) var hourlyUsage: [TokenUsagePoint]
     public private(set) var dailyUsage: [TokenUsagePoint]
     public private(set) var monthlyUsage: [TokenUsagePoint]
+    public private(set) var intradayComparison: IntradayUsageComparison
 
     public private(set) var sessionCount: Int
     public private(set) var turnCount: Int
@@ -38,6 +39,7 @@ public final class UsageDashboardState {
             now: now,
             dayBucketMinutes: configuration.dayBucketMinutes
         )
+        intradayComparison = metrics.intradayComparison
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
@@ -181,6 +183,7 @@ public final class UsageDashboardState {
             now: now,
             dayBucketMinutes: configuration.dayBucketMinutes
         )
+        intradayComparison = metrics.intradayComparison
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage

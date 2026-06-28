@@ -14,7 +14,7 @@ struct AppShellView: View {
             }
         }
         #if os(macOS)
-        .frame(minWidth: 980, minHeight: 720)
+            .frame(minWidth: 780, minHeight: 500)
         #endif
     }
 }
