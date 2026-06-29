@@ -2,7 +2,7 @@ import XCTest
 @testable import TokenMaxxingCore
 
 final class TokenUsageAggregatorTests: XCTestCase {
-    func testIntradayUsageAggregatesTurnUsageByStartMinuteAndFillsMissingMinutes() throws {
+    func testIntradayUsageAggregatesTurnUsageByDefaultBucketAndFillsMissingBuckets() throws {
         let calendar = makeCalendar()
         let now = date(calendar, month: 6, day: 16, hour: 12)
         let sessions = [
@@ -19,15 +19,14 @@ final class TokenUsageAggregatorTests: XCTestCase {
         let points = TokenUsageAggregator.intradayUsage(
             from: sessions,
             calendar: calendar,
-            dayContaining: now,
-            bucketMinutes: 1
+            dayContaining: now
         )
 
-        XCTAssertEqual(points.count, 24 * 60)
-        XCTAssertEqual(points[9 * 60 + 14].tokens, 0)
-        XCTAssertEqual(points[9 * 60 + 15].tokens, 150)
-        XCTAssertEqual(points[9 * 60 + 16].tokens, 200)
-        XCTAssertEqual(points[23 * 60 + 59].tokens, 0)
+        XCTAssertEqual(points.count, 24 * 6)
+        XCTAssertEqual(points[9 * 6].tokens, 0)
+        XCTAssertEqual(points[9 * 6 + 1].tokens, 350)
+        XCTAssertEqual(points[9 * 6 + 2].tokens, 0)
+        XCTAssertEqual(points[23 * 6 + 5].tokens, 0)
     }
 
     func testIntradayUsageCanUseConfiguredMinuteBuckets() throws {
@@ -139,6 +138,49 @@ final class TokenUsageAggregatorTests: XCTestCase {
         XCTAssertEqual(metrics.dailyUsage.last?.tokens, 200)
         XCTAssertEqual(metrics.previousDailyUsage.last?.tokens, 75)
         XCTAssertEqual(metrics.latestActivityAt, date(calendar, month: 6, day: 16, hour: 10))
+    }
+
+    func testIntradayComparisonCutsCurrentUsageAtNowAndAveragesActivePreviousDays() throws {
+        let calendar = makeCalendar()
+        let now = date(calendar, month: 6, day: 16, hour: 12, minute: 15)
+        let sessions = [
+            session(
+                turns: [
+                    turn(calendar, month: 6, day: 16, hour: 9, tokens: 100),
+                    turn(calendar, month: 6, day: 16, hour: 14, tokens: 999),
+                    turn(calendar, month: 6, day: 15, hour: 9, tokens: 50),
+                    turn(calendar, month: 6, day: 15, hour: 23, tokens: 150),
+                    turn(calendar, month: 6, day: 14, hour: 9, tokens: 150),
+                    turn(calendar, month: 6, day: 14, hour: 10, tokens: 50),
+                ]
+            ),
+        ]
+
+        let comparison = TokenUsageAggregator.intradayComparison(
+            from: sessions,
+            calendar: calendar,
+            now: now,
+            bucketMinutes: 60,
+            averageDays: 3
+        )
+
+        XCTAssertEqual(comparison.dayStart, date(calendar, month: 6, day: 16, hour: 0))
+        XCTAssertEqual(comparison.dayEnd, date(calendar, month: 6, day: 17, hour: 0))
+        XCTAssertEqual(comparison.referenceDate, now)
+        XCTAssertEqual(comparison.currentUsage.count, 13)
+        XCTAssertEqual(comparison.currentUsage.last?.date, date(calendar, month: 6, day: 16, hour: 12))
+        XCTAssertEqual(comparison.currentTotal, 100)
+        XCTAssertFalse(comparison.currentUsage.contains { $0.date == date(calendar, month: 6, day: 16, hour: 14) })
+
+        XCTAssertEqual(comparison.averageUsage.count, 25)
+        XCTAssertEqual(comparison.averageUsage.last?.date, date(calendar, month: 6, day: 17, hour: 0))
+        XCTAssertEqual(comparison.averageTotal, 200)
+
+        let averageByDate = Dictionary(uniqueKeysWithValues: comparison.averageUsage.map { ($0.date, $0.tokens) })
+        XCTAssertEqual(averageByDate[date(calendar, month: 6, day: 16, hour: 8)], 0)
+        XCTAssertEqual(averageByDate[date(calendar, month: 6, day: 16, hour: 9)], 100)
+        XCTAssertEqual(averageByDate[date(calendar, month: 6, day: 16, hour: 10)], 125)
+        XCTAssertEqual(averageByDate[date(calendar, month: 6, day: 16, hour: 23)], 200)
     }
 
     private func makeCalendar() -> Calendar {

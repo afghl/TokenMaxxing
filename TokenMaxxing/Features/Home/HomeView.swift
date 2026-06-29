@@ -2,6 +2,9 @@ import SwiftUI
 import TokenMaxxingCore
 
 struct HomeView: View {
+    private static let automaticRefreshInterval: Duration = .seconds(5 * 60)
+
+    @Environment(\.scenePhase) private var scenePhase
     @State private var dashboard = HomeDashboardViewModel()
 
     private let summaryColumns = [
@@ -29,6 +32,9 @@ struct HomeView: View {
             }
             .navigationTitle("TokenMaxxing")
         }
+        .task(id: scenePhase) {
+            await refreshWhileActive()
+        }
         #if os(macOS)
             .frame(minWidth: 760, minHeight: 720)
         #endif
@@ -42,7 +48,7 @@ struct HomeView: View {
                 colors: [
                     Color.white.opacity(0.56),
                     Color.white.opacity(0.18),
-                    Color.clear
+                    Color.clear,
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -52,7 +58,7 @@ struct HomeView: View {
                 colors: [
                     HomePalette.tokenAccent.opacity(0.045),
                     HomePalette.summaryBlue.opacity(0.035),
-                    Color.clear
+                    Color.clear,
                 ],
                 startPoint: .topTrailing,
                 endPoint: .bottomLeading
@@ -127,17 +133,18 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
 
-            TokenUsageChart(range: dashboard.selectedRange, points: dashboard.visibleUsage)
-                .frame(height: 280)
+            TokenUsageChart(
+                range: dashboard.selectedRange,
+                points: dashboard.visibleUsage,
+                intradayComparison: dashboard.intradayComparison
+            )
+            .frame(height: dashboard.selectedRange == .day ? 420 : 280)
         }
         .padding(20)
         .glassEffect(
             .regular.interactive(),
             in: RoundedRectangle(cornerRadius: 18, style: .continuous)
         )
-        .task {
-            await dashboard.refreshFromCodexLogs()
-        }
     }
 
     private var summaryGrid: some View {
@@ -195,6 +202,24 @@ struct HomeView: View {
         }
         .padding(16)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func refreshWhileActive() async {
+        guard scenePhase == .active else {
+            return
+        }
+
+        await dashboard.refreshFromCodexLogs()
+
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: Self.automaticRefreshInterval)
+            } catch {
+                return
+            }
+
+            await dashboard.refreshFromCodexLogs()
+        }
     }
 }
 

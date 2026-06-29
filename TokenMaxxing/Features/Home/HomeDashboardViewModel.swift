@@ -7,6 +7,7 @@ final class HomeDashboardViewModel {
     var selectedRange: UsageRange = .month
     var status = "No local scan yet"
 
+    private(set) var intradayComparison: IntradayUsageComparison
     private(set) var intradayUsage: [TokenUsagePoint]
     private(set) var hourlyUsage: [TokenUsagePoint]
     private(set) var dailyUsage: [TokenUsagePoint]
@@ -21,23 +22,29 @@ final class HomeDashboardViewModel {
     private var previousDailyUsage: [TokenUsagePoint]
     private var previousMonthlyUsage: [TokenUsagePoint]
 
-    private let scanCodexDashboardUseCase: ScanCodexDashboardUseCase
+    private let configuration: UsageDashboardConfiguration
+    private let calendar: Calendar
+    @ObservationIgnored private let dashboardService: UsageDashboardService
+    @ObservationIgnored private var isRefreshing = false
 
     init(
         configuration: UsageDashboardConfiguration = UsageDashboardConfiguration(),
         calendar: Calendar = .current,
         now: Date = .now,
-        sessions: [Session] = []
+        sessions: [Session] = [],
+        dashboardService: UsageDashboardService = UsageDashboardService()
     ) {
-        let buildDashboardUseCase = BuildDashboardUseCase(
+        self.configuration = configuration
+        self.calendar = calendar
+        self.dashboardService = dashboardService
+
+        let metrics = BuildDashboardUseCase(
             configuration: configuration,
             calendar: calendar
         )
-        scanCodexDashboardUseCase = ScanCodexDashboardUseCase(
-            buildDashboard: buildDashboardUseCase
-        )
+        .execute(sessions: sessions, now: now)
 
-        let metrics = buildDashboardUseCase.execute(sessions: sessions, now: now)
+        intradayComparison = metrics.intradayComparison
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
@@ -77,7 +84,9 @@ final class HomeDashboardViewModel {
     }
 
     var peakUsage: TokenUsagePoint? {
-        usageForSelectedRange.max { $0.tokens < $1.tokens }
+        let points = usageForSelectedRange
+        guard points.contains(where: { $0.tokens > 0 }) else { return nil }
+        return points.max { $0.tokens < $1.tokens }
     }
 
     var trendDescription: String {
@@ -111,20 +120,38 @@ final class HomeDashboardViewModel {
             ".codex"),
         now: Date = .now
     ) async {
-        status = "Scanning local logs..."
-        homeDashboardDebugLog("Starting Codex log scan at \(root.path)")
+        guard !isRefreshing else {
+            return
+        }
+
+        isRefreshing = true
+        defer {
+            isRefreshing = false
+        }
+
+        status = "Importing local logs..."
+        homeDashboardDebugLog("Starting Codex log import at \(root.path)")
 
         do {
-            let scanCodexDashboardUseCase = scanCodexDashboardUseCase
+            let dashboardService = dashboardService
+            let calendar = calendar
+            let configuration = configuration
             let metrics = try await Task.detached(priority: .userInitiated) {
-                try scanCodexDashboardUseCase.execute(root: root, now: now)
+                try await dashboardService.refreshFromCodexLogs(
+                    root: root,
+                    now: now,
+                    calendar: calendar,
+                    configuration: configuration
+                )
             }.value
 
-            homeDashboardDebugLog("Codex log scan returned \(metrics.sessionCount) sessions")
+            homeDashboardDebugLog(
+                "Codex log import returned \(metrics.sessionCount) persisted sessions"
+            )
             apply(metrics: metrics)
         } catch {
-            homeDashboardDebugLog("Codex log scan failed: \(error.localizedDescription)")
-            status = "Scan failed"
+            homeDashboardDebugLog("Codex log import failed: \(error.localizedDescription)")
+            status = "Import failed"
         }
     }
 
@@ -174,6 +201,7 @@ final class HomeDashboardViewModel {
     }
 
     private func apply(metrics: UsageDashboardMetrics) {
+        intradayComparison = metrics.intradayComparison
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage
         dailyUsage = metrics.dailyUsage
