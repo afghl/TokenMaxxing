@@ -52,8 +52,8 @@ struct TokenUsageChart: View {
                     y: .value("Average", item.tokens),
                     series: .value("Series", "Average elapsed")
                 )
-                .interpolationMethod(.catmullRom)
-                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.linear)
+                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .miter))
                 .foregroundStyle(HomePalette.averageLine.opacity(0.42))
             }
 
@@ -63,8 +63,8 @@ struct TokenUsageChart: View {
                     y: .value("Average", item.tokens),
                     series: .value("Series", "Average future")
                 )
-                .interpolationMethod(.catmullRom)
-                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.linear)
+                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .miter))
                 .foregroundStyle(HomePalette.averageLine.opacity(0.16))
             }
 
@@ -100,8 +100,8 @@ struct TokenUsageChart: View {
                     y: .value("Today", item.tokens),
                     series: .value("Series", "Today")
                 )
-                .interpolationMethod(.catmullRom)
-                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.linear)
+                .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .miter))
                 .foregroundStyle(HomePalette.tokenAccent)
             }
 
