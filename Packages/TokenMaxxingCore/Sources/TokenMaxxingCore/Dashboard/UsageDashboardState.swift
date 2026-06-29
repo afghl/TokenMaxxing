@@ -23,15 +23,19 @@ public final class UsageDashboardState {
 
     private let configuration: UsageDashboardConfiguration
     private let calendar: Calendar
+    @ObservationIgnored private let dashboardService: UsageDashboardService
+    @ObservationIgnored private var isRefreshing = false
 
     public init(
         configuration: UsageDashboardConfiguration = UsageDashboardConfiguration(),
         calendar: Calendar = .current,
         now: Date = .now,
-        sessions: [Session] = []
+        sessions: [Session] = [],
+        dashboardService: UsageDashboardService = UsageDashboardService()
     ) {
         self.configuration = configuration
         self.calendar = calendar
+        self.dashboardService = dashboardService
 
         let metrics = TokenUsageAggregator.dashboardMetrics(
             from: sessions,
@@ -115,16 +119,30 @@ public final class UsageDashboardState {
             ".codex"),
         now: Date = .now
     ) async {
+        guard !isRefreshing else {
+            return
+        }
+
+        isRefreshing = true
+        defer {
+            isRefreshing = false
+        }
+
         status = "Importing local logs..."
         tokenMaxxingDebugLog("Starting Codex log import at \(root.path)")
 
         do {
-            let sessions = try await Task.detached(priority: .userInitiated) {
-                try CodexSessionImporter(root: root).importSessions()
-            }.value
+            let metrics = try await dashboardService.refreshFromCodexLogs(
+                root: root,
+                now: now,
+                calendar: calendar,
+                configuration: configuration
+            )
 
-            tokenMaxxingDebugLog("Codex log import returned \(sessions.count) sessions")
-            apply(sessions: sessions, now: now)
+            tokenMaxxingDebugLog(
+                "Codex log import returned \(metrics.sessionCount) persisted sessions"
+            )
+            apply(metrics: metrics)
         } catch {
             tokenMaxxingDebugLog("Codex log import failed: \(error.localizedDescription)")
             status = "Import failed"
@@ -176,13 +194,7 @@ public final class UsageDashboardState {
         }
     }
 
-    private func apply(sessions: [Session], now: Date) {
-        let metrics = TokenUsageAggregator.dashboardMetrics(
-            from: sessions,
-            calendar: calendar,
-            now: now,
-            dayBucketMinutes: configuration.dayBucketMinutes
-        )
+    private func apply(metrics: UsageDashboardMetrics) {
         intradayComparison = metrics.intradayComparison
         intradayUsage = metrics.intradayUsage
         hourlyUsage = metrics.hourlyUsage

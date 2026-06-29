@@ -3,6 +3,9 @@ import SwiftUI
 import TokenMaxxingCore
 
 struct HomeView: View {
+    private static let automaticRefreshInterval: Duration = .seconds(5 * 60)
+
+    @Environment(\.scenePhase) private var scenePhase
     @State private var dashboard = UsageDashboardState()
 
     var body: some View {
@@ -19,6 +22,9 @@ struct HomeView: View {
                 pageBackground
             }
             .navigationTitle("TokenMaxxing")
+        }
+        .task(id: scenePhase) {
+            await refreshWhileActive()
         }
         #if os(macOS)
             .frame(minWidth: 760, minHeight: 720)
@@ -78,7 +84,22 @@ struct HomeView: View {
             .regular.interactive(),
             in: RoundedRectangle(cornerRadius: 18, style: .continuous)
         )
-        .task {
+    }
+
+    private func refreshWhileActive() async {
+        guard scenePhase == .active else {
+            return
+        }
+
+        await dashboard.refreshFromCodexLogs()
+
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: Self.automaticRefreshInterval)
+            } catch {
+                return
+            }
+
             await dashboard.refreshFromCodexLogs()
         }
     }

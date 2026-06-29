@@ -16,7 +16,10 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "TokenMaxxingCore"
+            name: "TokenMaxxingCore",
+            linkerSettings: [
+                .linkedLibrary("sqlite3"),
+            ]
         ),
         .testTarget(
             name: "TokenMaxxingCoreTests",
